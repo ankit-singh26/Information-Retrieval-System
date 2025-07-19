@@ -1,13 +1,15 @@
-import "../index.css"; // 👈 create this file for custom styling
+import React from "react";
 
 export default function ChatHistory({ history }) {
+  if (history.length === 0) return null;
+
   return (
     <div className="chat-history">
-      <h2 className="chat-title">Chat History</h2>
-      {history.map((item, i) => (
-        <div key={i} className="chat-entry">
-          <p><strong>Q:</strong> {item.q}</p>
-          <p><strong>A:</strong> {item.a}</p>
+      <h3 className="chat-title">Chat History</h3>
+      {history.map(({ q, a }, idx) => (
+        <div key={idx} className="chat-entry">
+          <p><b>Q:</b> {q}</p>
+          <p><b>A:</b> {a}</p>
         </div>
       ))}
     </div>
