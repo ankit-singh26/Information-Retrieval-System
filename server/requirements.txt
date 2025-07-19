@@ -12,3 +12,4 @@ python-jose[cryptography]  # JWT handling
 passlib[bcrypt]   # password hashing
 python-dotenv     # environment variables
 dnspython         # for MongoDB Atlas DNS support
+langchain-community
