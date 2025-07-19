@@ -1,5 +1,4 @@
-# uvicorn main:app --reload --port 8000
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Header
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Header, status
 from fastapi.middleware.cors import CORSMiddleware
 from model import User, Question
 from utils import extract_text_from_pdf, create_qa_chain
@@ -18,7 +17,7 @@ PDF_PATH = "storage/temp.pdf"
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://astonishing-sprite-614ba6.netlify.app"],  # Replace with your frontend URL
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -68,6 +67,6 @@ async def upload_pdf(file: UploadFile = File(...), user=Depends(get_current_user
 async def ask_question(q: Question, user=Depends(get_current_user)):
     global qa_chain
     if not qa_chain:
-        return {"error": "Please upload a PDF first."}
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Please upload a PDF first.")
     answer = qa_chain.run(q.query)
     return {"answer": answer}
