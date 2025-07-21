@@ -154,7 +154,12 @@ Make sure to allow CORS and set frontend/backend URLs in .env
 ![Demo Image](images/images/login.png)
 
 2. Signup page
+![Demo Image](images/images/signup.png)
 
+3. Q&A page
+![Demo Image](images/images/upload.png)
+
+![Demo Image](images/images/image.png)
 
 🤝 Contributors
 Made with ❤️ by Ankit and contributors.
