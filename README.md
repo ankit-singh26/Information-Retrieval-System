@@ -75,7 +75,7 @@ Python-Jose + Passlib (Auth)
 bash
 Copy
 Edit
-git clone https://github.com/your-username/information-retrieval-gen-ai.git
+git clone https://github.com/ankit-singh26/Information-Retrieval-System.git
 cd information-retrieval-gen-ai
 2. Backend Setup
 bash
