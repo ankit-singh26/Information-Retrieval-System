@@ -2,7 +2,7 @@ import json
 import os
 import fitz  # PyMuPDF
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores import FAISS
+from langchain_community.vectorstores import FAISS  # ✅ Fixed import
 from langchain_huggingface import HuggingFaceEmbeddings
 from transformers import pipeline
 from langchain.llms import HuggingFacePipeline
@@ -15,7 +15,6 @@ EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 GENERATION_MODEL_NAME = "google/flan-t5-base"
 DATA_PATH = os.path.join(os.path.dirname(__file__), "job_skills.json")
 
-
 # === LOAD JOB SKILLS DATA ===
 try:
     with open(DATA_PATH, "r", encoding="utf-8") as f:
@@ -23,7 +22,6 @@ try:
 except Exception as e:
     print(f"Failed to load job skills: {e}")
     JOB_SKILLS_DATA = []
-
 
 # === EXTRACT TEXT FROM PDF ===
 def extract_text_from_pdf(file_path: str) -> str:
@@ -34,7 +32,6 @@ def extract_text_from_pdf(file_path: str) -> str:
         print(f"Error reading PDF: {e}")
         return ""
 
-
 # === BUILD VECTORSTORE IN MEMORY ===
 def get_vectorstore(resume_text: str):
     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=30)
@@ -43,7 +40,6 @@ def get_vectorstore(resume_text: str):
     embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL_NAME)
     vectorstore = FAISS.from_documents(docs, embeddings)
     return vectorstore
-
 
 # === STRICT PROMPT TEMPLATE ===
 def build_prompt_template():
@@ -95,7 +91,6 @@ Question:
 """
     return PromptTemplate(template=prompt, input_variables=["context", "question"])
 
-
 # === OPTIONAL OUTPUT CLEANER ===
 def clean_output(answer: str) -> str:
     lines = answer.strip().split("\n")
@@ -104,7 +99,6 @@ def clean_output(answer: str) -> str:
             if job["title"].lower() in line.lower():
                 return job["title"]
     return lines[0].strip()
-
 
 # === CREATE QA CHAIN ===
 def create_qa_chain(resume_text: str, generation_model_name=GENERATION_MODEL_NAME):
@@ -130,7 +124,6 @@ def create_qa_chain(resume_text: str, generation_model_name=GENERATION_MODEL_NAM
         input_key="question",
         return_source_documents=False,
     )
-
 
 # === MAIN TEST ===
 if __name__ == "__main__":
