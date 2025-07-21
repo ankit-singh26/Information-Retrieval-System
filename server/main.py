@@ -17,12 +17,12 @@ PDF_PATH = "storage/temp.pdf"
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://astonishing-sprite-614ba6.netlify.app"],  # Replace with your frontend URL
+    allow_origins=["https://astonishing-sprite-614ba6.netlify.app"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Dependency: check token & fetch user
 async def get_current_user(authorization: str = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing token")
@@ -35,6 +35,10 @@ async def get_current_user(authorization: str = Header(None)):
         raise HTTPException(status_code=401, detail="User not found")
     return email
 
+@app.get("/")
+def root():
+    return {"message": "Backend is running"}
+
 @app.post("/signup")
 async def signup(user: User):
     existing = await get_user_by_email(user.email)
@@ -45,11 +49,22 @@ async def signup(user: User):
 
 @app.post("/login")
 async def login(user: User):
-    db_user = await get_user_by_email(user.email)
-    if not db_user or not verify_password(user.password, db_user["password"]):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    token = create_access_token({"sub": user.email})
-    return {"access_token": token, "token_type": "bearer"}
+    try:
+        db_user = await get_user_by_email(user.email)
+        if not db_user:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+
+        password_hash = db_user.get("password") if isinstance(db_user, dict) else db_user.password
+
+        if not verify_password(user.password, password_hash):
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+
+        token = create_access_token({"sub": user.email})
+        return {"access_token": token, "token_type": "bearer"}
+
+    except Exception as e:
+        print(f"LOGIN ERROR: {e}")
+        raise HTTPException(status_code=500, detail="Server error during login")
 
 @app.post("/upload")
 async def upload_pdf(file: UploadFile = File(...), user=Depends(get_current_user)):
@@ -57,7 +72,6 @@ async def upload_pdf(file: UploadFile = File(...), user=Depends(get_current_user
     os.makedirs("storage", exist_ok=True)
     with open(PDF_PATH, "wb") as f:
         f.write(contents)
-
     text = extract_text_from_pdf(PDF_PATH)
     global qa_chain
     qa_chain = create_qa_chain(text)
