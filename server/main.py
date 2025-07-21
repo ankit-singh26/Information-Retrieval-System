@@ -1,3 +1,4 @@
+# uvicorn main:app --reload
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Header, status
 from fastapi.middleware.cors import CORSMiddleware
 from model import User, Question
@@ -17,7 +18,7 @@ PDF_PATH = "storage/temp.pdf"
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://astonishing-sprite-614ba6.netlify.app"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
