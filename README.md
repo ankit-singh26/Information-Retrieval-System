@@ -80,7 +80,7 @@ cd information-retrieval-gen-ai
 2. Backend Setup
 bash
 Copy
-Edit
+Edit git 
 cd server
 python -m venv venv
 source venv/bin/activate  # or venv\Scripts\activate on Windows
