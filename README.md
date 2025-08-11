@@ -408,10 +408,6 @@ We welcome contributions! Please follow these steps:
 - **CORS Protection**: Configurable cross-origin resource sharing
 - **File Upload Security**: PDF validation and size limits
 
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## 🙏 Acknowledgments
 
 - **OpenRouter** for providing access to multiple LLM APIs
