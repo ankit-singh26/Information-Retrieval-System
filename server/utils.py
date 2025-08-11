@@ -2,17 +2,21 @@ import json
 import os
 import fitz  # PyMuPDF
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import FAISS  # ✅ Fixed import
-from langchain_huggingface import HuggingFaceEmbeddings
-from transformers import pipeline
-from langchain.llms import HuggingFacePipeline
+from langchain_community.vectorstores import FAISS
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_openai import ChatOpenAI
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 from langchain.chains.question_answering import load_qa_chain
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # === CONFIGURATION ===
 EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-GENERATION_MODEL_NAME = "google/flan-t5-base"
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "meta-llama/llama-3.1-8b-instruct:free")
 DATA_PATH = os.path.join(os.path.dirname(__file__), "job_skills.json")
 
 # === LOAD JOB SKILLS DATA ===
@@ -41,54 +45,23 @@ def get_vectorstore(resume_text: str):
     vectorstore = FAISS.from_documents(docs, embeddings)
     return vectorstore
 
-# === STRICT PROMPT TEMPLATE ===
+# === GENERAL DOCUMENT ANALYZER PROMPT TEMPLATE ===
 def build_prompt_template():
-    job_skills_str = "\n".join(
-        [f"- {job['title']}: {', '.join(job['skills'])}" for job in JOB_SKILLS_DATA]
-    )
+    prompt = """
+You are an intelligent document analyzer. Your task is to analyze the provided document content and answer questions based on it.
 
-    few_shots = """
-Example 1:
-Resume:
-Skills: Python, SQL, Data Analysis, Tableau
-Question: What job role is suitable for me?
-Answer: Data Analyst
+Instructions:
+1. If the question is related to the document content, provide a brief and accurate answer based on the document.
+2. If the question is not related to the document content, clearly state that the question is not document-specific and provide a brief generic answer based on your general knowledge.
+3. Keep all answers brief and to the point.
 
-Example 2:
-Resume:
-Skills: React, Node.js, MongoDB, Express.js, Git
-Question: What kind of developer role should I apply for?
-Answer: Full-Stack Developer
+Document Content:
+{context}
 
-Example 3:
-Resume:
-Skills: Java, Spring Boot, REST APIs, SQL
-Question: What role fits me best?
-Answer: Java Developer
-"""
+Question: {question}
 
-    prompt = f"""
-You are an expert career advisor.
-
-Given the resume content and a list of job titles with their required skills, your task is to analyze the resume and answer the user's question.
-
-ONLY output **one job title** from the list that best matches the resume's skills. Do not explain. Do not list multiple roles. No bullet points. No extra text.
-
-Here are some examples:
-
-{few_shots}
-
-Now follow the same format for the input below.
-
-Job Titles and Required Skills:
-{job_skills_str}
-
-Resume:
-{{context}}
-
-Question:
-{{question}}
-"""
+Answer:"""
+    
     return PromptTemplate(template=prompt, input_variables=["context", "question"])
 
 # === OPTIONAL OUTPUT CLEANER ===
@@ -101,19 +74,25 @@ def clean_output(answer: str) -> str:
     return lines[0].strip()
 
 # === CREATE QA CHAIN ===
-def create_qa_chain(resume_text: str, generation_model_name=GENERATION_MODEL_NAME):
+def create_qa_chain(resume_text: str):
+    if not OPENROUTER_API_KEY:
+        raise ValueError("OPENROUTER_API_KEY not found in environment variables")
+    
     vectorstore = get_vectorstore(resume_text)
     retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
 
-    gen_pipeline = pipeline(
-        "text2text-generation",
-        model=generation_model_name,
-        max_new_tokens=512,
-        do_sample=True,
-        top_p=0.9,
+    # Initialize OpenRouter LLM via OpenAI-compatible API
+    llm = ChatOpenAI(
+        model=OPENROUTER_MODEL,
+        openai_api_key=OPENROUTER_API_KEY,
+        openai_api_base="https://openrouter.ai/api/v1",
         temperature=0.7,
+        max_tokens=512,
+        default_headers={
+            "HTTP-Referer": "http://localhost:3000",  # Optional: for analytics
+            "X-Title": "PDF Resume Analyzer",  # Optional: for analytics
+        }
     )
-    llm = HuggingFacePipeline(pipeline=gen_pipeline)
 
     prompt_template = build_prompt_template()
     qa_chain = load_qa_chain(llm, chain_type="stuff", prompt=prompt_template)
@@ -134,9 +113,13 @@ if __name__ == "__main__":
         print("No text extracted from resume.")
         exit()
 
-    qa = create_qa_chain(resume_text)
-    question = "What job role is suitable for me?"
-    raw_answer = qa.run({"question": question})
+    try:
+        qa = create_qa_chain(resume_text)
+        question = "What job role is suitable for me?"
+        raw_answer = qa.run({"question": question})
 
-    print("Raw model output:", raw_answer)
-    print("Cleaned answer:", clean_output(raw_answer))
+        print("Raw model output:", raw_answer)
+        print("Cleaned answer:", clean_output(raw_answer))
+    except ValueError as e:
+        print(f"Configuration error: {e}")
+        print("Please set OPENROUTER_API_KEY in your .env file")

@@ -83,5 +83,5 @@ async def ask_question(q: Question, user=Depends(get_current_user)):
     global qa_chain
     if not qa_chain:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Please upload a PDF first.")
-    answer = qa_chain.run(q.query)
+    answer = qa_chain.invoke({"question": q.query})["result"]
     return {"answer": answer}
